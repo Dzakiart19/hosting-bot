@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s # By default, scrape targets every 15 seconds.
+
+scrape_configs:
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Scrape cAdvisor to get container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # In a real-world scenario, you would add more jobs here.
+  # For example, scraping a /metrics endpoint from your FastAPI app
+  # or using a node-exporter for host-level metrics.
+  #
+  # - job_name: 'fastapi-app'
+  #   static_configs:
+  #     - targets: ['api:8000'] # Assuming a /metrics endpoint is exposed

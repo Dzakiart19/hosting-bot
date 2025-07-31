@@ -1,0 +1,72 @@
+# Main server block for handling web traffic and API calls
+server {
+    listen 80;
+    server_name ${DOMAIN} *.${DOMAIN};
+
+    # Redirect all HTTP traffic to HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+
+    # Let's Encrypt ACME challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name ${DOMAIN};
+
+    # SSL Certs
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    # Main application (Next.js frontend)
+    location / {
+        proxy_pass http://web:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # API endpoint
+    location /api/ {
+        proxy_pass http://api:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Wildcard server block for deployed user projects
+server {
+    listen 443 ssl http2;
+    server_name ~^(?<subdomain>.+)\.${DOMAIN}$;
+
+    # Wildcard SSL Certs
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}-wildcard/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}-wildcard/privkey.pem;
+
+    # This part is tricky and would likely need a dynamic resolution mechanism.
+    # For example, a small Lua script or a dedicated resolver service that maps
+    # the subdomain to the correct container's IP and port.
+    #
+    # Placeholder: this would need to be replaced with a real implementation.
+    location / {
+        # A real implementation might look like:
+        # resolver 127.0.0.11; # Docker's internal DNS
+        # set $target_container http://$subdomain-app:80;
+        # proxy_pass $target_container;
+
+        # Placeholder returns 503
+        return 503 "Service discovery not implemented yet.";
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
